@@ -1,9 +1,15 @@
-from telegram.ext import ApplicationBuilder, CommandHandler
-from .instagram import fetch_posts
-from .limiter import allow
-from .config import BOT_TOKEN, CHANNEL, POSTS_PER_HOUR
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+)
 
-async def fetch(update, context):
+from .instagram import fetch_posts
+from .config import BOT_TOKEN, CHANNEL
+
+
+async def fetch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /fetch mountain")
         return
@@ -11,26 +17,30 @@ async def fetch(update, context):
     keyword = context.args[0]
 
     try:
-        posts = fetch_posts(keyword, POSTS_PER_HOUR)
+        posts = fetch_posts(keyword)
+
+        if not posts:
+            await update.message.reply_text("No posts found.")
+            return
+
+        for shortcode in posts:
+            url = f"https://www.instagram.com/p/{shortcode}/"
+            await context.bot.send_message(chat_id=CHANNEL, text=url)
+
+        await update.message.reply_text("✅ Posted successfully")
+
     except Exception as e:
-        await update.message.reply_text(f"❌ {e}")
-        return
+        await update.message.reply_text(f"❌ Error:\n{e}")
 
-    sent = 0
-    for link in posts:
-        if not allow(POSTS_PER_HOUR):
-            await update.message.reply_text("⏳ Hourly limit reached")
-            break
-
-        await context.bot.send_message(chat_id=CHANNEL, text=link)
-        sent += 1
-
-    await update.message.reply_text(f"✅ Posted {sent} posts")
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+
     app.add_handler(CommandHandler("fetch", fetch))
+
+    print("🤖 Bot started (polling)")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()

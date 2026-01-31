@@ -1,20 +1,23 @@
-# app/instagram.py
 import instaloader
-from .config import SESSION_FILE, INSTAGRAM_USERNAME
+from .config import INSTAGRAM_USERNAME, SESSION_FILE
 
 L = instaloader.Instaloader(
     download_pictures=False,
     download_videos=False,
+    download_video_thumbnails=False,
     download_comments=False,
     save_metadata=False,
     quiet=True,
 )
 
+# Load session
 L.load_session_from_file(INSTAGRAM_USERNAME, SESSION_FILE)
 
+
 def fetch_posts(keyword, limit=5):
-    hashtag = instaloader.Hashtag.from_name(L.context, keyword)
     posts = []
+
+    hashtag = instaloader.Hashtag.from_name(L.context, keyword)
 
     for post in hashtag.get_posts():
         posts.append(post.shortcode)
